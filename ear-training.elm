@@ -37,8 +37,7 @@ type alias Model =
     , startTime : Maybe Time
     , timeLeft : Float
     , gameLength : Float
-
-    --, incorrect : Dict.Dict (String Int)
+    , incorrectAnswers : List ( String, String )
     }
 
 
@@ -51,9 +50,8 @@ init =
             , numberCorrect = 0
             , startTime = Nothing
             , timeLeft = 30
-            , gameLength = 30
-
-            --, incorrect = Dict.empty
+            , gameLength = 1
+            , incorrectAnswers = []
             }
     in
         ( model
@@ -92,9 +90,22 @@ update msg model =
     case msg of
         Answer chordName ->
             if model.currentChord == Just chordName then
-                ( { model | numberCorrect = model.numberCorrect + 1 }, playSound ("media/correct.mp3") )
+                ( { model
+                    | numberCorrect = model.numberCorrect + 1
+                  }
+                , playSound ("media/correct.mp3")
+                )
             else
-                ( model, Cmd.none )
+                case model.currentChord of
+                    Nothing ->
+                        ( model, Cmd.none )
+
+                    Just currentChord ->
+                        ( { model
+                            | incorrectAnswers = ( currentChord, chordName ) :: model.incorrectAnswers
+                          }
+                        , Cmd.none
+                        )
 
         SoundPlayed path ->
             case path of
@@ -159,7 +170,10 @@ view model =
 gameOverScreen : Model -> Html Msg
 gameOverScreen model =
     div []
-        [ h1 [] [ text "Game Over Man!" ] ]
+        [ h1 [] [ text "Game Over Man!" ]
+        , div [] [ text ("You got " ++ (toString model.numberCorrect) ++ " right") ]
+        , div [] [ text (toString model.incorrectAnswers) ]
+        ]
 
 
 playScreen : Model -> Html Msg
