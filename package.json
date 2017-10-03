@@ -1,0 +1,8 @@
+{
+  "scripts": {
+    "start": "elm-live ear-training.elm --output=elm.js"
+  },
+  "dependencies": {
+    "elm-live": "^2.7.5"
+  }
+}

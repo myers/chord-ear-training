@@ -3,6 +3,8 @@ body {
     height: 100%;
     border-width: 5px;
     border-color: black;
+    color: white;
+    background-color: black;
 }
 
 
@@ -15,4 +17,9 @@ body {
 
 #main button {
   font-size: 100px;
+  padding: 10px;
+  margin: 25px;
+  width: 150px;
+  height: 150px;
+
 }

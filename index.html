@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>elm-css example!</title>
+    <title>Ear Training</title>
     <link rel="stylesheet" href="style.css">
     <script type="text/javascript" src="elm.js"></script>
   </head>
@@ -13,7 +13,23 @@
     </div>
 
     <script type="text/javascript">
-      var app = Elm.ChordEarTraining.embed(document.getElementById("elm-landing-pad"));
+      var app = Elm.EarTraining.embed(document.getElementById("elm-landing-pad"));
+
+      var sounds = {};
+      app.ports.playSound.subscribe(function(path) {
+        console.log("playSound", path);
+        if (!sounds.hasOwnProperty(path)) {
+          sounds[path] = new Audio(path);
+          sounds[path].onended = function () {
+            app.ports.soundPlayed.send(path);
+          }
+        }
+        for (var _path in sounds) {
+          sounds[_path].pause();
+        }
+        sounds[path].currentTime = 0;
+        sounds[path].play();
+      });
     </script>
   </body>
 </html>
