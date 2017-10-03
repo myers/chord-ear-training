@@ -6,6 +6,9 @@ import Html.Attributes exposing (..)
 import Random
 import Random.Extra
 import Dict
+import Round exposing (..)
+import Time exposing (..)
+import AnimationFrame
 
 
 main =
@@ -31,6 +34,9 @@ type alias Model =
     { currentChord : Maybe String
     , chords : List String
     , numberCorrect : Int
+    , startTime : Maybe Time
+    , timeLeft : Float
+    , gameLength : Float
 
     --, incorrect : Dict.Dict (String Int)
     }
@@ -43,6 +49,9 @@ init =
             { currentChord = Nothing
             , chords = [ "A", "D", "E" ]
             , numberCorrect = 0
+            , startTime = Nothing
+            , timeLeft = 30
+            , gameLength = 30
 
             --, incorrect = Dict.empty
             }
@@ -60,6 +69,8 @@ type Msg
     = Answer String
     | NewChord (Maybe String)
     | SoundPlayed String
+    | PlayCurrentChord
+    | CurrentTick Time
 
 
 
@@ -96,6 +107,17 @@ update msg model =
         NewChord newChord ->
             ( { model | currentChord = newChord }, playChord newChord )
 
+        PlayCurrentChord ->
+            ( model, playChord model.currentChord )
+
+        CurrentTick time ->
+            case model.startTime of
+                Nothing ->
+                    ( { model | startTime = Just time }, Cmd.none )
+
+                Just value ->
+                    ( { model | timeLeft = model.gameLength - ((Time.inSeconds time) - (Time.inSeconds value)) }, Cmd.none )
+
 
 playChord : Maybe String -> Cmd Msg
 playChord chordName =
@@ -113,7 +135,13 @@ playChord chordName =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    soundPlayed SoundPlayed
+    if model.timeLeft > 0 then
+        Sub.batch
+            [ soundPlayed SoundPlayed
+            , AnimationFrame.times CurrentTick
+            ]
+    else
+        Sub.none
 
 
 
@@ -122,41 +150,39 @@ subscriptions model =
 
 view : Model -> Html Msg
 view model =
+    if model.timeLeft > 0 then
+        playScreen model
+    else
+        gameOverScreen model
+
+
+gameOverScreen : Model -> Html Msg
+gameOverScreen model =
+    div []
+        [ h1 [] [ text "Game Over Man!" ] ]
+
+
+playScreen : Model -> Html Msg
+playScreen model =
     div []
         [ h1 []
-            [ text ("What chord is playing?") ]
+            [ text "What chord is that?" ]
         , div [ class "score" ]
-            [ text "Number Correct: "
+            [ text "👍 "
             , text (toString model.numberCorrect)
-            , text " Out of 20"
             ]
+        , div [ class "timer" ]
+            [ text "⏱ ", text (Round.round 1 model.timeLeft) ]
+        , div []
+            [ button [ onClick PlayCurrentChord ] [ text "🔊" ] ]
         , div []
             (List.map
                 chordButton
                 model.chords
             )
-
-        -- , audioTag model.currentChord
         ]
-
-
-
--- audioTag : Maybe String -> Html Msg
--- audioTag chordName =
---     case chordName of
---         Nothing ->
---             div [] []
---
---         Just value ->
---             audio [ (src ("media/" ++ value ++ "-Chord-ES-399-Piezo.mp3")), autoplay True, controls True ] []
 
 
 chordButton : String -> Html Msg
 chordButton chordName =
     button [ onClick (Answer chordName) ] [ text chordName ]
-
-
-
---- Right answer plays tone
---- wrong answer plays the currentChord again
---- button to play currentChord again
