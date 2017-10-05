@@ -15,6 +15,12 @@ body {
   height: 100%;
 }
 
+#main div.audio-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 #main button {
   font-size: 100px;
   padding: 10px;
@@ -22,4 +28,15 @@ body {
   width: 150px;
   height: 150px;
 
+}
+
+#main button.audio {
+  font-size: 150px;
+  background: none !important;
+  color: inherit;
+  border: none;
+  padding: 0! important;
+  /* font: inherit; */
+  cursor: pointer;
+  outline: inherit !important;
 }

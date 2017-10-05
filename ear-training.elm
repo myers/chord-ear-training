@@ -46,11 +46,11 @@ init =
     let
         model =
             { currentChord = Nothing
-            , chords = [ "A", "D", "E" ]
+            , chords = [ "D", "A", "E" ]
             , numberCorrect = 0
             , startTime = Nothing
             , timeLeft = 30
-            , gameLength = 1
+            , gameLength = 30
             , incorrectAnswers = []
             }
     in
@@ -187,8 +187,8 @@ playScreen model =
             ]
         , div [ class "timer" ]
             [ text "⏱ ", text (Round.round 1 model.timeLeft) ]
-        , div []
-            [ button [ onClick PlayCurrentChord ] [ text "🔊" ] ]
+        , div [ class "audio-box" ]
+            [ button [ class "audio", onClick PlayCurrentChord ] [ text "🔊" ] ]
         , div []
             (List.map
                 chordButton
