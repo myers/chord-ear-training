@@ -31,13 +31,14 @@ port soundPlayed : (String -> msg) -> Sub msg
 
 
 type alias Model =
-    { currentChord : Maybe String
-    , chords : List String
-    , numberCorrect : Int
-    , startTime : Maybe Time
-    , timeLeft : Float
-    , gameLength : Float
+    { chords : List String
+    , currentChord : Maybe String
+    , turnStartTime : Maybe Time
+    , timePerTurn : Int
+    , gameLength : Int
+    , correctAnswers : List String
     , incorrectAnswers : List ( String, String )
+    , lateAnswers : List String
     }
 
 
@@ -45,13 +46,14 @@ init : ( Model, Cmd Msg )
 init =
     let
         model =
-            { currentChord = Nothing
-            , chords = [ "D", "A", "E" ]
-            , numberCorrect = 0
-            , startTime = Nothing
-            , timeLeft = 30
-            , gameLength = 30
+            { chords = [ "D", "A", "E" ]
+            , currentChord = Nothing
+            , turnStartTime = Nothing
+            , timePerTurn = 4 -- 4 seconds to answer a chord
+            , gameLength = 20 -- 20 correct answers
+            , correctAnswers = []
             , incorrectAnswers = []
+            , lateAnswers = []
             }
     in
         ( model
@@ -89,18 +91,18 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Answer chordName ->
-            if model.currentChord == Just chordName then
-                ( { model
-                    | numberCorrect = model.numberCorrect + 1
-                  }
-                , playSound ("media/correct.mp3")
-                )
-            else
-                case model.currentChord of
-                    Nothing ->
-                        ( model, Cmd.none )
+            case model.currentChord of
+                Nothing ->
+                    ( model, Cmd.none )
 
-                    Just currentChord ->
+                Just currentChord ->
+                    if currentChord == chordName then
+                        ( { model
+                            | correctAnswers = currentChord :: model.correctAnswers
+                          }
+                        , playSound ("media/correct.mp3")
+                        )
+                    else
                         ( { model
                             | incorrectAnswers = ( currentChord, chordName ) :: model.incorrectAnswers
                           }
@@ -122,12 +124,12 @@ update msg model =
             ( model, playChord model.currentChord )
 
         CurrentTick time ->
-            case model.startTime of
+            case model.turnStartTime of
                 Nothing ->
-                    ( { model | startTime = Just time }, Cmd.none )
+                    ( { model | turnStartTime = Just time }, Cmd.none )
 
                 Just value ->
-                    ( { model | timeLeft = model.gameLength - ((Time.inSeconds time) - (Time.inSeconds value)) }, Cmd.none )
+                    ( { model | turnTimeLeft = model.timePerTurn - ((Time.inSeconds time) - (Time.inSeconds value)) }, Cmd.none )
 
 
 playChord : Maybe String -> Cmd Msg
@@ -146,7 +148,7 @@ playChord chordName =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    if model.timeLeft > 0 then
+    if gameOver model then
         Sub.batch
             [ soundPlayed SoundPlayed
             , AnimationFrame.times CurrentTick
@@ -159,9 +161,14 @@ subscriptions model =
 -- VIEW
 
 
+gameOver : Model -> Bool
+gameOver model =
+    model.gameLength >= (List.length model.correctAnswers)
+
+
 view : Model -> Html Msg
 view model =
-    if model.timeLeft > 0 then
+    if gameOver model then
         playScreen model
     else
         gameOverScreen model
@@ -171,7 +178,7 @@ gameOverScreen : Model -> Html Msg
 gameOverScreen model =
     div []
         [ h1 [] [ text "Game Over Man!" ]
-        , div [] [ text ("You got " ++ (toString model.numberCorrect) ++ " right") ]
+        , div [] [ text ("You got " ++ (toString (List.length model.correctAnswers)) ++ " right") ]
         , div [] [ text (toString model.incorrectAnswers) ]
         ]
 
