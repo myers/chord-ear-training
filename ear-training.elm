@@ -34,7 +34,8 @@ type alias Model =
     { chords : List String
     , currentChord : Maybe String
     , turnStartTime : Maybe Time
-    , timePerTurn : Int
+    , turnTimeLeft : Float
+    , timePerTurn : Float
     , gameLength : Int
     , correctAnswers : List String
     , incorrectAnswers : List ( String, String )
@@ -49,6 +50,7 @@ init =
             { chords = [ "D", "A", "E" ]
             , currentChord = Nothing
             , turnStartTime = Nothing
+            , turnTimeLeft = 4
             , timePerTurn = 4 -- 4 seconds to answer a chord
             , gameLength = 20 -- 20 correct answers
             , correctAnswers = []
@@ -190,10 +192,10 @@ playScreen model =
             [ text "What chord is that?" ]
         , div [ class "score" ]
             [ text "👍 "
-            , text (toString model.numberCorrect)
+            , text (toString (List.length model.correctAnswers))
             ]
         , div [ class "timer" ]
-            [ text "⏱ ", text (Round.round 1 model.timeLeft) ]
+            [ text "⏱ ", text (Round.round 1 model.turnTimeLeft) ]
         , div [ class "audio-box" ]
             [ button [ class "audio", onClick PlayCurrentChord ] [ text "🔊" ] ]
         , div []
