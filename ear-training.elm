@@ -1,3 +1,9 @@
+-- streaks
+-- % right
+-- press button, play sound
+-- correct button pressed, stop clock, play success, start new turn
+
+
 port module EarTraining exposing (..)
 
 import Html exposing (..)
@@ -23,6 +29,9 @@ main =
 port playSound : String -> Cmd msg
 
 
+port stopAndPlaySound : String -> Cmd msg
+
+
 port soundPlayed : (String -> msg) -> Sub msg
 
 
@@ -39,7 +48,7 @@ type alias Model =
     , gameLength : Int
     , correctAnswers : List String
     , incorrectAnswers : List ( String, String )
-    , lateAnswers : List String
+    , correctButLateAnswers : List String
     }
 
 
@@ -50,16 +59,16 @@ init =
             { chords = [ "D", "A", "E" ]
             , currentChord = Nothing
             , turnStartTime = Nothing
-            , turnTimeLeft = 4
-            , timePerTurn = 4 -- 4 seconds to answer a chord
+            , turnTimeLeft = 0
+            , timePerTurn = 30 -- 4 seconds to answer a chord
             , gameLength = 20 -- 20 correct answers
             , correctAnswers = []
             , incorrectAnswers = []
-            , lateAnswers = []
+            , correctButLateAnswers = []
             }
     in
         ( model
-        , pickNewChord model
+        , startNewTurn model
         )
 
 
@@ -69,7 +78,7 @@ init =
 
 type Msg
     = Answer String
-    | NewChord (Maybe String)
+    | NewTurn (Maybe String)
     | SoundPlayed String
     | PlayCurrentChord
     | CurrentTick Time
@@ -79,10 +88,10 @@ type Msg
 --| PlayCurrentChord
 
 
-pickNewChord : Model -> Cmd Msg
-pickNewChord model =
+startNewTurn : Model -> Cmd Msg
+startNewTurn model =
     Random.generate
-        NewChord
+        NewTurn
         (Random.Extra.filter
             (\n -> n /= model.currentChord)
             (Random.Extra.sample model.chords)
@@ -93,45 +102,77 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Answer chordName ->
-            case model.currentChord of
-                Nothing ->
-                    ( model, Cmd.none )
+            let
+                cmds =
+                    [ playChord (Just chordName) ]
+            in
+                case model.currentChord of
+                    Nothing ->
+                        ( model, Cmd.batch cmds )
 
-                Just currentChord ->
-                    if currentChord == chordName then
-                        ( { model
-                            | correctAnswers = currentChord :: model.correctAnswers
-                          }
-                        , playSound ("media/correct.mp3")
-                        )
-                    else
-                        ( { model
-                            | incorrectAnswers = ( currentChord, chordName ) :: model.incorrectAnswers
-                          }
-                        , Cmd.none
-                        )
+                    Just currentChord ->
+                        if currentChord == chordName then
+                            ( { model
+                                | correctAnswers = currentChord :: model.correctAnswers
+                              }
+                            , Cmd.batch (List.append cmds [ playSound "media/correct.mp3" ])
+                            )
+                        else
+                            ( { model
+                                | incorrectAnswers = ( currentChord, chordName ) :: model.incorrectAnswers
+                              }
+                            , Cmd.batch cmds
+                            )
 
         SoundPlayed path ->
             case path of
                 "media/correct.mp3" ->
-                    ( model, pickNewChord model )
+                    ( model, startNewTurn model )
 
                 _ ->
                     ( model, Cmd.none )
 
-        NewChord newChord ->
-            ( { model | currentChord = newChord }, playChord newChord )
+        NewTurn newChord ->
+            ( { model
+                | currentChord = newChord
+                , turnStartTime = Nothing
+              }
+            , playChord newChord
+            )
 
         PlayCurrentChord ->
             ( model, playChord model.currentChord )
 
-        CurrentTick time ->
+        CurrentTick currentTime ->
             case model.turnStartTime of
                 Nothing ->
-                    ( { model | turnStartTime = Just time }, Cmd.none )
+                    ( { model | turnStartTime = Just currentTime, turnTimeLeft = model.timePerTurn }, Cmd.none )
 
-                Just value ->
-                    ( { model | turnTimeLeft = model.timePerTurn - ((Time.inSeconds time) - (Time.inSeconds value)) }, Cmd.none )
+                Just startTime ->
+                    if turnOver model currentTime then
+                        ( { model | turnTimeLeft = 0 }, Cmd.none )
+                    else
+                        ( { model | turnTimeLeft = (remainingTurnTime model currentTime) }, Cmd.none )
+
+
+turnStarted : Model -> Bool
+turnStarted model =
+    model.turnStartTime == Nothing
+
+
+remainingTurnTime : Model -> Time -> Float
+remainingTurnTime model currentTime =
+    case model.turnStartTime of
+        Nothing ->
+            0
+
+        Just startTime ->
+            model.timePerTurn - ((Time.inSeconds currentTime) - (Time.inSeconds startTime))
+
+
+turnOver : Model -> Time -> Bool
+turnOver model time =
+    (remainingTurnTime model time) <= 0
 
 
 playChord : Maybe String -> Cmd Msg
@@ -150,30 +191,31 @@ playChord chordName =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    if gameOver model then
-        Sub.batch
-            [ soundPlayed SoundPlayed
-            , AnimationFrame.times CurrentTick
-            ]
-    else
-        Sub.none
+    Sub.batch
+        [ soundPlayed SoundPlayed
+        , AnimationFrame.times CurrentTick
+        ]
 
 
 
 -- VIEW
 
 
-gameOver : Model -> Bool
-gameOver model =
-    model.gameLength >= (List.length model.correctAnswers)
+isTheGameOver : Model -> Bool
+isTheGameOver model =
+    let
+        allCorrectAnswers =
+            (List.length model.correctAnswers) + (List.length model.correctButLateAnswers)
+    in
+        allCorrectAnswers >= model.gameLength
 
 
 view : Model -> Html Msg
 view model =
-    if gameOver model then
-        playScreen model
-    else
+    if isTheGameOver model then
         gameOverScreen model
+    else
+        playScreen model
 
 
 gameOverScreen : Model -> Html Msg

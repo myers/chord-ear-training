@@ -16,14 +16,24 @@
       var app = Elm.EarTraining.embed(document.getElementById("elm-landing-pad"));
 
       var sounds = {};
-      app.ports.playSound.subscribe(function(path) {
-        console.log("playSound", path);
+      function cacheSound(path) {
         if (!sounds.hasOwnProperty(path)) {
           sounds[path] = new Audio(path);
           sounds[path].onended = function () {
             app.ports.soundPlayed.send(path);
           }
         }
+      }
+      app.ports.playSound.subscribe(function(path) {
+        console.log("playSound", path);
+        cacheSound(path);
+        sounds[path].currentTime = 0;
+        sounds[path].play();
+      });
+
+      app.ports.stopAndPlaySound.subscribe(function(path) {
+        console.log("stopAndPlaySound", path);
+        cacheSound(path);
         for (var _path in sounds) {
           sounds[_path].pause();
         }
