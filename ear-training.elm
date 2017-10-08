@@ -1,7 +1,8 @@
+-- correct button pressed, stop clock, play success, start new turn
+-- bar to show progress towards finish exercise
+-- circle that emptys to show turn timer
 -- streaks
 -- % right
--- press button, play sound
--- correct button pressed, stop clock, play success, start new turn
 
 
 port module EarTraining exposing (..)
@@ -60,7 +61,7 @@ init =
             , currentChord = Nothing
             , turnStartTime = Nothing
             , turnTimeLeft = 0
-            , timePerTurn = 30 -- 4 seconds to answer a chord
+            , timePerTurn = 4 -- 4 seconds to answer a chord
             , gameLength = 20 -- 20 correct answers
             , correctAnswers = []
             , incorrectAnswers = []
